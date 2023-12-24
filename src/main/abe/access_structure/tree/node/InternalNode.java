@@ -1,25 +1,6 @@
 package access_structure.tree.node;
 
 public abstract class InternalNode extends TreeNode {
-    private TreeNode left;
-    private TreeNode right;
-
-    public TreeNode getLeft() {
-        return left;
-    }
-
-    public void setLeft(TreeNode left) {
-        this.left = left;
-    }
-
-    public TreeNode getRight() {
-        return right;
-    }
-
-    public void setRight(TreeNode right) {
-        this.right = right;
-    }
-
     @Override
     public int hashCode() {
         final int prime = 31;

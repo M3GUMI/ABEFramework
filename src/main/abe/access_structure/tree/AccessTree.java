@@ -9,7 +9,7 @@ import java.util.*;
 public class AccessTree implements AccessStructure {
     private Map<Integer, String> rho;
     private List<List<Integer>> A;
-    private TreeNode policyTree;
+    public TreeNode policyTree;
     private int partsIndex;
     private List<PolicyAttribute> policyAttributeList;
 

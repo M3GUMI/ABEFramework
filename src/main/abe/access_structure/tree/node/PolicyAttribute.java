@@ -3,11 +3,12 @@ package access_structure.tree.node;
 import java.util.Random;
 
 public class PolicyAttribute extends TreeNode {
-    private String attributeName;
-    private int ti;
-    private int tj;
+    public String attributeName;
+    public Integer ti;
+    public Integer tj;
     //x是对象在A中的下标
-    private int x;
+    public int x;
+    public boolean hasSpan;
 
     public PolicyAttribute(String attribute) {
         if (attribute.matches("[a-z,A-Z,0-9]*:[0-9]*-[0-9]*")) {
@@ -19,12 +20,12 @@ public class PolicyAttribute extends TreeNode {
 
             this.ti = Integer.parseInt(attributeLowerLimit);
             this.tj = Integer.parseInt(attributeUpperLimit);
-
+            hasSpan = true;
         }
-    }
-
-    public String getAttributeName() {
-        return attributeName;
+        else {
+            attributeName = attribute;
+            hasSpan = false;
+        }
     }
 
     public int getTi() {

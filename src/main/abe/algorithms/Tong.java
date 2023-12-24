@@ -1,16 +1,16 @@
 package algorithms;
 
 import access_structure.AccessStructure;
-import access_structure.clause.TongClause;
+import access_structure.tree.AccessTree;
+import access_structure.tree.node.PolicyAttribute;
+import access_structure.tree.node.TreeNode;
 import it.unisa.dia.gas.jpbc.*;
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import it.unisa.dia.gas.plaf.jpbc.pairing.a1.TypeA1CurveGenerator;
 import it.unisa.dia.gas.plaf.jpbc.util.ElementUtils;
+import sun.reflect.generics.tree.Tree;
 import utils.Util;
-import utils.containers.Container;
-import utils.containers.Quaternion;
-import utils.containers.Triad;
-import utils.containers.Tuple;
+import utils.containers.*;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -41,6 +41,7 @@ public class Tong implements ABEAlgorithm{
         Element eta;
         List<Element> H1List;
         List<Element> H2List;
+        int Z = 4000;
 
         public TongPK(int d,
                       Element g_p,
@@ -92,7 +93,17 @@ public class Tong implements ABEAlgorithm{
     }
 
     class TongCipher extends Cipher {
+        Element C;
+        Element C1;
+        Map<String, Container> CMap;
 
+        public TongCipher(Element C,
+                          Element C1,
+                          Map<String, Container> CMap) {
+            this.C = C;
+            this.C1 = C1;
+            this.CMap = CMap;
+        }
     }
 
     class TongASK extends ASK {
@@ -105,6 +116,8 @@ public class Tong implements ABEAlgorithm{
         Element K_bar;
         List<Element> K1_barList;
         List<Element> K2_barList;
+        List<String> attributeNames;
+        Map<String, Triad> attributes;
 
         public TongASK(Element K,
                        Map<String, Container> KList,
@@ -114,7 +127,9 @@ public class Tong implements ABEAlgorithm{
                        Element k_bar_4,
                        Element k_bar,
                        List<Element> k1_barList,
-                       List<Element> k2_barList) {
+                       List<Element> k2_barList,
+                       List<String> attributeNames,
+                       Map<String, Triad> attributes) {
             this.K = K;
             this.KList = KList;
             this.K_bar_1 = k_bar_1;
@@ -124,6 +139,8 @@ public class Tong implements ABEAlgorithm{
             this.K_bar = k_bar;
             this.K1_barList = k1_barList;
             this.K2_barList = k2_barList;
+            this.attributeNames = attributeNames;
+            this.attributes = attributes;
         }
     }
 
@@ -235,6 +252,7 @@ public class Tong implements ABEAlgorithm{
         Element K = h.powZn((alpha.sub(a)).div(beta));
 
         Map<String, Container> KMap = new HashMap<>();
+        Map<String, Triad> attributeMap = new HashMap<>();
         for (String attribute : attributes) {
             Triad<String, Integer, Integer> triad = parseAttribute(attribute);
             if (triad == null)
@@ -248,16 +266,15 @@ public class Tong implements ABEAlgorithm{
                 int t1 = triad.second;
                 int t2 = triad.third;
 
-                Element pow1 = lambda.powZn(Zr.newElement(t1));
-                Element pow2 = mu.powZn(Zr.newElement(t2));
-                Element K3 = phi.powZn(pow1);
-                Element K4 = phi_bar.powZn(pow2);
+                Element K3 = getV_t1(t1).powZn(a_j);
+                Element K4 = getV_bar_t2(t2).powZn(a_j);
                 Quaternion<Element, Element, Element, Element> quaternion = new Quaternion<>(K1, K2, K3, K4);
                 KMap.put(attributeName, quaternion);
             } else {
                 Tuple<Element, Element> tuple = new Tuple<>(K1, K2);
                 KMap.put(attributeName, tuple);
             }
+            attributeMap.put(attribute, triad);
         }
 
         Element K1_bar = G1.newOneElement().getImmutable();
@@ -283,7 +300,7 @@ public class Tong implements ABEAlgorithm{
         Element K4_bar = g_q.powZn(tau_2);
         Element R_1 = getGrGenerator(g);
         Element K_bar = R_1.mul(h.powZn(a));
-        return new TongASK(K, KMap, K1_bar, K2_bar, K3_bar, K4_bar, K_bar, Kl1_bar_list, Kl2_bar_list);
+        return new TongASK(K, KMap, K1_bar, K2_bar, K3_bar, K4_bar, K_bar, Kl1_bar_list, Kl2_bar_list, attributes, attributeMap);
     }
 
     private Triad<String, Integer, Integer> parseAttribute(String attribute) {
@@ -308,13 +325,142 @@ public class Tong implements ABEAlgorithm{
 
     @Override
     public Cipher Enc(byte[] message, AccessStructure accessStructure) {
-        if (!(accessStructure instanceof TongClause))
+        if (!(accessStructure instanceof AccessTree))
             return null;
-        TongClause clause = (TongClause) accessStructure;
+        AccessTree tree = (AccessTree) accessStructure;
+        TreeNode root = tree.policyTree;
+        Element s = Zr.newRandomElement().getImmutable();
+        Map<String, Container> CMap = new HashMap<>();
+        getCMap(CMap, root, s);
+        Element epsilon = pk.epsilon;
+        Element eta = pk.eta;
+        Element C = epsilon.powZn(s);
+        Element C1 = eta.powZn(s);
+
+        return new TongCipher(C, C1, CMap);
+    }
+
+    public void getCMap(Map<String, Container> CMap, TreeNode current, Element secret) {
+        if (current == null)
+            return;
+
+        if (current.getName() == "and") {
+            Element sRight = Zr.newRandomElement().getImmutable();
+            Element sLeft = secret.sub(sRight);
+            getCMap(CMap, current.left, sLeft);
+            getCMap(CMap, current.right, sRight);
+        } else if (current.getName() == "or") {
+            getCMap(CMap, current.left, secret);
+            getCMap(CMap, current.right, secret);
+        } else {
+            Element h = pk.h;
+            ElementPowPreProcessing phi = pk.phi;
+            ElementPowPreProcessing phi_bar = pk.phi_bar;
+            PolicyAttribute policyAttribute = (PolicyAttribute) current;
+            String attributeName = current.getName();
+            Element H = Util.getElementByFingerprint(curvePath, attributeName, true);
+            if (policyAttribute.hasSpan) {
+                Element y_ = Zr.newRandomElement().getImmutable();
+                Element y__ = secret.sub(y_);
+                int t1 = policyAttribute.ti;
+                int t2 = policyAttribute.tj;
+
+                Element C1 = h.powZn(y_);
+                Element C2 = H.powZn(y_);
+                Element C3 = getV_t1(t1).powZn(y_);
+                Element C4 = h.powZn(y__);
+                Element C5 = H.powZn(y__);
+                Element C6 = getV_bar_t2(t2).powZn(y__);
+                CMap.put(attributeName, new Hexadecimal<>(C1, C2, C3, C4, C5, C6));
+            } else {
+                Element C1 = h.powZn(secret);
+                Element C2 = H.powZn(secret);
+                CMap.put(attributeName, new Tuple<>(C1, C2));
+            }
+        }
+    }
+
+    private Element getV_t1(int t1) {
+        ElementPowPreProcessing phi = pk.phi;
+        Element lambda = pk.lambda;
+        Element pow = lambda.powZn(Zr.newElement(t1));
+        return phi.powZn(pow);
+    }
+
+    private Element getV_bar_t2(int t2) {
+        ElementPowPreProcessing phi_bar = pk.phi_bar;
+        int Z = pk.Z;
+        Element mu = pk.mu;
+        Element pow = mu.powZn(Zr.newElement(Z-t2));
+        return phi_bar.powZn(pow);
     }
 
     @Override
     public void Dec(Cipher cipher, AccessStructure accessStructure, ASK ask) {
+        if(!(cipher instanceof TongCipher && accessStructure instanceof AccessTree && ask instanceof TongASK))
+            return;
+        TongCipher tongCipher = (TongCipher) cipher;
+        AccessTree accessTree = (AccessTree) accessStructure;
+        TongASK tongASK = (TongASK) ask;
+        List<String> attributeNames = tongASK.attributeNames;
+        Map<String, Triad> attributes = tongASK.attributes;
+        TreeNode root = accessTree.policyTree;
+        Map<String, Container> CMap = tongCipher.CMap;
+        Element F_root = computeRoot(tongCipher, root, tongASK);
+        Element e1 = G1.newRandomElement().getImmutable();
+        Element e2 = G1.newRandomElement().getImmutable();
+        Element e3 = Zr.newRandomElement().getImmutable();
+        bp.pairing(e1, e1).mul(F_root).powZn(e3.invert()).mul(tongCipher.C);
+    }
 
+    public Element computeRoot(TongCipher tongCipher, TreeNode current, TongASK tongASK) {
+        if (current == null)
+            return null;
+
+        List<String> attributeNames = tongASK.attributeNames;
+        Map<String, Triad> attributes = tongASK.attributes;
+        Map<String, Container> CMap = tongCipher.CMap;
+        Element g_p = pk.g_p;
+        Element h = pk.h;
+
+        if (current.getName() == "or") {
+            Element Fx;
+            if ((Fx = computeRoot(tongCipher, current.left, tongASK)) != null)
+                return Fx;
+            return computeRoot(tongCipher, current.right, tongASK);
+        } else if (current.getName() == "and") {
+            Element Fx1 = computeRoot(tongCipher, current.left, tongASK);
+            Element Fx2 = computeRoot(tongCipher, current.right, tongASK);
+            return Fx1.mul(Fx2);
+        } else {
+            PolicyAttribute leafNode = (PolicyAttribute)current;
+            String attributeName = leafNode.attributeName;
+            if (attributes.containsKey(attributeName))
+                return null;
+//            if (leafNode.hasSpan) {
+//                Triad<String, Integer, Integer> userAttribute = attributes.get(attributeName);
+//                int ta = userAttribute.second;
+//                int tb = userAttribute.third;
+//                int t1 = leafNode.ti;
+//                int t2 = leafNode.tj;
+//                if (ta < t1 || tb < t2)
+//                    return null;
+//
+//            }
+            Element zr1 = Zr.newRandomElement().getImmutable();
+            Element zr2 = Zr.newRandomElement().getImmutable();
+            Element v1 = getV_t1(30).powZn(zr1.mul(zr2));
+            Element v2 = getV_bar_t2(30).powZn(zr1.mul(zr2));
+            Element H = Util.getElementByFingerprint(curvePath, attributeName, true);
+            Element h1 = G1.newRandomElement();
+            g_p.powZn(zr1.mul(zr2)).mul(H.powZn(zr1.mul(zr2)));
+            h.mul(v1).powZn(zr1.mul(zr2));
+            h.mul(v2).powZn(zr1.mul(zr2));
+            Element a = bp.pairing(H, h1);
+            Element b = bp.pairing(H, h1);
+            bp.pairing(H, h1);
+            bp.pairing(H, h1);
+            return a.mul(b);
+        }
     }
 }
