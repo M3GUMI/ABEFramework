@@ -1,10 +1,10 @@
-package access_structure.tree.node;
+package accessStructure.tree.node;
 
-public class OrGate extends InternalNode {
+public class AndGate extends InternalNode {
     private static final long serialVersionUID = 1L;
 
     @Override
     public String getName() {
-        return "or";
+        return "and";
     }
 }

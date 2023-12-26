@@ -1,4 +1,4 @@
-package access_structure.tree.node;
+package accessStructure.tree.node;
 
 public abstract class InternalNode extends TreeNode {
     @Override

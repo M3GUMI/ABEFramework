@@ -6,6 +6,7 @@ import accessStructure.tree.AccessTree;
 import it.unisa.dia.gas.jpbc.*;
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import it.unisa.dia.gas.plaf.jpbc.pairing.a.TypeACurveGenerator;
+import it.unisa.dia.gas.plaf.jpbc.pairing.a1.TypeA1CurveGenerator;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -14,23 +15,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Waters implements ABEAlgorithm{
+public class LaiDengLi implements ABEAlgorithm{
     private Field G1;
     private Field Zr;
     private Field GT;
     private Pairing bp;
-    private WatersPK pk;
-    private WatersMSK msk;
-    private final String curvePath = "src/main/resources/curves/waters.properties";
-    public PolicyType policyType = PolicyType.Boolean;
-    class WatersPK extends PK {
+    private LaiPK pk;
+    private LaiMSK msk;
+    private final String curvePath = "src/main/resources/curves/laiDengLi.properties";
+    public ABEAlgorithm.PolicyType policyType = ABEAlgorithm.PolicyType.Boolean;
+    class LaiPK extends ABEAlgorithm.PK {
         ElementPowPreProcessing g;
         Element egg_alpha;
         Element g_a;
         List<String> attributeNames;
         Map<String, ElementPowPreProcessing> hMap;
 
-        public WatersPK(ElementPowPreProcessing g,
+        public LaiPK(ElementPowPreProcessing g,
                         Element egg_alpha,
                         Element g_a,
                         List<String> attributeNames,
@@ -43,21 +44,21 @@ public class Waters implements ABEAlgorithm{
         }
     }
 
-    class WatersMSK extends MSK {
+    class LaiMSK extends ABEAlgorithm.MSK {
         Element g_alpha;
 
-        public WatersMSK(Element g_alpha) {
+        public LaiMSK(Element g_alpha) {
             this.g_alpha = g_alpha;
         }
     }
 
-    class WatersASK extends ASK{
+    class LaiASK extends ABEAlgorithm.ASK {
         Element K;
         Element L;
         List<String> attributeNames;
         Map<String, Element> KxMap;
 
-        public WatersASK(Element K,
+        public LaiASK(Element K,
                          Element L,
                          List<String> attributeNames,
                          Map<String, Element> KxMap) {
@@ -68,14 +69,14 @@ public class Waters implements ABEAlgorithm{
         }
     }
 
-    class WatersCipher extends Cipher{
+    class LaiCipher extends ABEAlgorithm.Cipher {
         Element C;
         Element C_;
         Map<String, Element> CMap;
         Map<String, Element> DMap;
         LSSSMatrix matrix;
 
-        public WatersCipher(Element C,
+        public LaiCipher(Element C,
                             Element C_,
                             Map<String, Element> CMap,
                             Map<String, Element> DMap,
@@ -88,14 +89,14 @@ public class Waters implements ABEAlgorithm{
         }
     }
 
-    public Waters(){
+    public LaiDengLi(){
         this(256);
     }
 
-    public Waters(int size){
+    public LaiDengLi(int size){
         File file = new File(curvePath);
         if (!file.exists()) {
-            TypeACurveGenerator pg = new TypeACurveGenerator(size, size);
+            TypeA1CurveGenerator pg = new TypeA1CurveGenerator(4, size);
             PairingParameters typeAParams = pg.generate();
             try {
                 FileWriter writer = new FileWriter(file);
@@ -141,8 +142,8 @@ public class Waters implements ABEAlgorithm{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        pk = new WatersPK(g, egg_alpha, g_a, attributeSet, hMap);
-        msk = new WatersMSK(g_alpha);
+        pk = new LaiPK(g, egg_alpha, g_a, attributeSet, hMap);
+        msk = new LaiMSK(g_alpha);
     }
 
     @Override
@@ -160,7 +161,7 @@ public class Waters implements ABEAlgorithm{
             Element Kx = h.powZn(t);
             KxMap.put(attribute, Kx);
         }
-        return new WatersASK(K, L, attributes, KxMap);
+        return new LaiASK(K, L, attributes, KxMap);
     }
 
     @Override
@@ -232,26 +233,26 @@ public class Waters implements ABEAlgorithm{
             DMap.put(attributeName, D_i);
         }
 
-        return new WatersCipher(C, C_, CMap, DMap, lsssMatrix);
+        return new LaiCipher(C, C_, CMap, DMap, lsssMatrix);
     }
 
     @Override
-    public void Dec(Cipher cipher, AccessStructure accessStructure, ASK ask) {
-        if(!(cipher instanceof WatersCipher && accessStructure instanceof LSSSMatrix))
+    public void Dec(ABEAlgorithm.Cipher cipher, AccessStructure accessStructure, ABEAlgorithm.ASK ask) {
+        if(!(cipher instanceof LaiCipher && accessStructure instanceof LSSSMatrix))
             return;
 
         LSSSMatrix matrix = (LSSSMatrix) accessStructure;
-        WatersCipher watersCipher = (WatersCipher)cipher;
-        Element C = watersCipher.C;
-        Element C_ = watersCipher.C_;
-        Map<String, Element> CMap = watersCipher.CMap;
-        Map<String, Element> DMap = watersCipher.DMap;
+        LaiCipher laiCipher = (LaiCipher)cipher;
+        Element C = laiCipher.C;
+        Element C_ = laiCipher.C_;
+        Map<String, Element> CMap = laiCipher.CMap;
+        Map<String, Element> DMap = laiCipher.DMap;
 
-        WatersASK watersASK = (WatersASK) ask;
-        Element K = watersASK.K;
-        Element L = watersASK.L;
-        Map<String, Element> KxMap = watersASK.KxMap;
-        List<String> attributeList = watersASK.attributeNames;
+        LaiASK laiASK = (LaiASK) ask;
+        Element K = laiASK.K;
+        Element L = laiASK.L;
+        Map<String, Element> KxMap = laiASK.KxMap;
+        List<String> attributeList = laiASK.attributeNames;
         List<String> returnAttributes = matrix.returnAttributes(attributeList);
         if (returnAttributes == null)
             System.out.println("null");
@@ -269,3 +270,5 @@ public class Waters implements ABEAlgorithm{
         }
     }
 }
+
+

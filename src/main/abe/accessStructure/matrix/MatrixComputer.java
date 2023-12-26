@@ -1,4 +1,4 @@
-package access_structure.matrix;
+package accessStructure.matrix;
 
 import java.util.ArrayList;
 import java.util.List;

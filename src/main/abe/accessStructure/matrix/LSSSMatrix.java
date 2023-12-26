@@ -1,8 +1,8 @@
-package access_structure.matrix;
+package accessStructure.matrix;
 
 
-import access_structure.AccessStructure;
-import access_structure.tree.AccessTree;
+import accessStructure.AccessStructure;
+import accessStructure.tree.AccessTree;
 
 import java.util.ArrayList;
 import java.util.HashMap;

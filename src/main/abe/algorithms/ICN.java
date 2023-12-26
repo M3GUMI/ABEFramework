@@ -1,7 +1,7 @@
 package algorithms;
 
-import access_structure.AccessStructure;
-import access_structure.clause.ICNClause;
+import accessStructure.AccessStructure;
+import accessStructure.clause.ICNClause;
 import it.unisa.dia.gas.jpbc.*;
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import it.unisa.dia.gas.plaf.jpbc.pairing.a1.TypeA1CurveGenerator;
@@ -23,6 +23,7 @@ public class ICN implements ABEAlgorithm{
     public ICNPK pk;
     public ICNMSK msk;
     private final String curvePath = "src/main/resources/curves/icn.properties";
+    public PolicyType policyType = PolicyType.And;
 
     public class ICNPK extends PK {
         ElementPowPreProcessing phi;
@@ -115,6 +116,43 @@ public class ICN implements ABEAlgorithm{
             this.C2Map = C2Map;
             this.C3Map = C3Map;
         }
+    }
+
+
+
+    public ICN() {
+        File file = new File(curvePath);
+        if (!file.exists()) {
+            TypeA1CurveGenerator pg = new TypeA1CurveGenerator(4, 256);
+            PairingParameters typeAParams = pg.generate();
+//            BigInteger n0 = typeAParams.getBigInteger("n0");
+//            BigInteger n1 = typeAParams.getBigInteger("n1");
+//            BigInteger n2 = typeAParams.getBigInteger("n2");
+//            BigInteger n3 = typeAParams.getBigInteger("n3");
+//            n0 = n0.multiply(n1);
+//            n1 = n2.multiply(n3);
+//
+//            String param = "type a1\n" +
+//                    "p " + typeAParams.getString("p") + "\n" +
+//                    "n " + typeAParams.getString("n") + "\n" +
+//                    "n0 " + n0 + "\n"+
+//                    "n1 " + n1 + "\n"+
+//                    "l " + typeAParams.getString("l") + "\n";
+
+            try {
+                file.createNewFile();
+                FileWriter writer = new FileWriter(curvePath);
+                writer.write(typeAParams.toString());
+                writer.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        Pairing pairing = PairingFactory.getPairing(curvePath);
+        this.bp = pairing;
+        this.G1 = pairing.getG1();
+        this.GT = pairing.getGT();
+        this.Zr = pairing.getZr();
     }
 
     public ICN(int size){
@@ -243,6 +281,16 @@ public class ICN implements ABEAlgorithm{
         }
 
         return new ICNASK(attributes, D_UID, XMap, YMap, ZMap);
+    }
+
+    @Override
+    public AccessStructure generateAccessStructure(String policy) {
+        return new ICNClause(policy);
+    }
+
+    @Override
+    public PolicyType getPolicyType() {
+        return policyType;
     }
 
     @Override

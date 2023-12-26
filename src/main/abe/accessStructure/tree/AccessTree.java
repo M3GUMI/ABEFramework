@@ -1,8 +1,7 @@
-package access_structure.tree;
+package accessStructure.tree;
 
-import access_structure.AccessStructure;
-import access_structure.tree.node.*;
-import access_structure.tree.node.*;
+import accessStructure.AccessStructure;
+import accessStructure.tree.node.*;
 
 import java.util.*;
 

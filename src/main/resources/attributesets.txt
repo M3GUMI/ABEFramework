@@ -1,7 +1,3 @@
-CS
-SE
-Teacher
-Student
 user0
 user1
 user2

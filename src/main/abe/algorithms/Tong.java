@@ -1,14 +1,13 @@
 package algorithms;
 
-import access_structure.AccessStructure;
-import access_structure.tree.AccessTree;
-import access_structure.tree.node.PolicyAttribute;
-import access_structure.tree.node.TreeNode;
+import accessStructure.AccessStructure;
+import accessStructure.tree.AccessTree;
+import accessStructure.tree.node.PolicyAttribute;
+import accessStructure.tree.node.TreeNode;
 import it.unisa.dia.gas.jpbc.*;
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import it.unisa.dia.gas.plaf.jpbc.pairing.a1.TypeA1CurveGenerator;
 import it.unisa.dia.gas.plaf.jpbc.util.ElementUtils;
-import sun.reflect.generics.tree.Tree;
 import utils.Util;
 import utils.containers.*;
 
@@ -26,6 +25,7 @@ public class Tong implements ABEAlgorithm{
     public TongPK pk;
     public TongMSK msk;
     private final String curvePath = "src/main/resources/curves/tong.properties";
+    public PolicyType policyType = PolicyType.Boolean;
 
     class TongPK extends PK {
         int d;
@@ -144,6 +144,29 @@ public class Tong implements ABEAlgorithm{
         }
     }
 
+    public Tong() {
+        File file = new File(curvePath);
+        if (!file.exists()) {
+            TypeA1CurveGenerator pg = new TypeA1CurveGenerator(3, 256);
+            PairingParameters typeAParams = pg.generate();
+
+            try {
+                file.createNewFile();
+                FileWriter writer = new FileWriter(curvePath);
+                writer.write(typeAParams.toString());
+                writer.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        Pairing pairing = PairingFactory.getPairing(curvePath);
+        this.bp = pairing;
+        this.G1 = pairing.getG1();
+        this.GT = pairing.getGT();
+        this.Zr = pairing.getZr();
+        this.g = G1.newRandomElement().getImmutable();
+    }
+
     public Tong(int size) {
         File file = new File(curvePath);
         if (!file.exists()) {
@@ -166,6 +189,7 @@ public class Tong implements ABEAlgorithm{
         this.Zr = pairing.getZr();
         this.g = G1.newRandomElement().getImmutable();
     }
+
     @Override
     public void Setup(int d) {
         Element alpha = Zr.newRandomElement().getImmutable();
@@ -301,6 +325,16 @@ public class Tong implements ABEAlgorithm{
         Element R_1 = getGrGenerator(g);
         Element K_bar = R_1.mul(h.powZn(a));
         return new TongASK(K, KMap, K1_bar, K2_bar, K3_bar, K4_bar, K_bar, Kl1_bar_list, Kl2_bar_list, attributes, attributeMap);
+    }
+
+    @Override
+    public AccessStructure generateAccessStructure(String policy) {
+        return AccessTree.buildFromPolicy(policy);
+    }
+
+    @Override
+    public PolicyType getPolicyType() {
+        return policyType;
     }
 
     private Triad<String, Integer, Integer> parseAttribute(String attribute) {

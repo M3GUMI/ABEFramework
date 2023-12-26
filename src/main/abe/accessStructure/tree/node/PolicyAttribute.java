@@ -1,6 +1,4 @@
-package access_structure.tree.node;
-
-import java.util.Random;
+package accessStructure.tree.node;
 
 public class PolicyAttribute extends TreeNode {
     public String attributeName;

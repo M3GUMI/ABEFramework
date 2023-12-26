@@ -1,4 +1,4 @@
-package access_structure;
+package accessStructure;
 
 public interface AccessStructure {
 }
